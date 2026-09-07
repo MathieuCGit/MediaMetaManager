@@ -58,9 +58,10 @@ export function parseDiscogsUrl(input: string): DiscogsResource {
 		throw new Error("The URL must belong to discogs.com.");
 	}
 
-	// Discogs commonly appends a human-readable slug after the numeric ID.
-	// Accept both /release/123 and /release/123-some-title forms.
-	const match = url.pathname.match(/^\/(artist|release|master)\/(\d+)(?:[-\/]|$)/i);
+	// Discogs may include a language prefix before the resource, for example
+	// /fr/release/9580817. It also commonly appends a human-readable slug after
+	// the numeric ID, so both /release/123 and /release/123-some-title work.
+	const match = url.pathname.match(/^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(artist|release|master)\/(\d+)(?:[-\/]|$)/i);
 	if (!match) {
 		throw new Error("Expected a Discogs /artist, /release, or /master URL followed by an ID.");
 	}

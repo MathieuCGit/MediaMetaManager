@@ -41,7 +41,7 @@ function parseDiscogsUrl(input) {
   if (hostname !== "discogs.com" && !hostname.endsWith(".discogs.com")) {
     throw new Error("The URL must belong to discogs.com.");
   }
-  const match = url.pathname.match(/^\/(artist|release|master)\/(\d+)(?:[-\/]|$)/i);
+  const match = url.pathname.match(/^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(artist|release|master)\/(\d+)(?:[-\/]|$)/i);
   if (!match) {
     throw new Error("Expected a Discogs /artist, /release, or /master URL followed by an ID.");
   }

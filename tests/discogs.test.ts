@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 import { fetchDiscogsResource, getDiscogsAlbumTitle, getDiscogsArtist, getDiscogsNoteName, parseDiscogsUrl } from "../src/discogs";
 
 const RELEASE_URL = "https://www.discogs.com/release/3940534-Matt-Molloy-Matt-Molloy";
+const FRENCH_RELEASE_URL = "https://www.discogs.com/fr/release/9580817-Postcards-From-Mars-Growth";
 
 describe("parseDiscogsUrl", () => {
 	it("extracts the release ID from the supplied Matt Molloy URL", () => {
 		expect(parseDiscogsUrl(RELEASE_URL)).toEqual({ type: "release", id: "3940534" });
+	});
+
+	it("extracts the release ID from a localized Discogs URL", () => {
+		expect(parseDiscogsUrl(FRENCH_RELEASE_URL)).toEqual({ type: "release", id: "9580817" });
 	});
 
 	it.each([

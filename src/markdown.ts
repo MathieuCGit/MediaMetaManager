@@ -39,7 +39,7 @@ export function buildMarkdown(
 		"",
 		formatCover(entity),
 		"",
-		"## Informations Générales",
+		"## General information",
 		formatGeneralInformation(entity, sourceUrl),
 		"",
 		"## Track list",
