@@ -34,6 +34,8 @@ describe("buildMarkdown", () => {
 		expect(markdown).toContain("type: album");
 		expect(markdown).toContain("title: Matt Molloy");
 		expect(markdown).toContain("artist: Matt Molloy");
+		expect(markdown).toContain("artist_url: https://www.discogs.com/artist/507127");
+		expect(markdown).toContain(" - artist: [Matt Molloy](https://www.discogs.com/artist/507127)");
 		expect(markdown).toContain("![Pochette](https://i.discogs.com/cover.jpg)");
 		expect(markdown).toContain("# Matt Molloy - Matt Molloy");
 		expect(markdown).toContain("| A1 |  | Boys Of The Lough/Tarbolton<br>Engineer – [John Engineer](https://www.discogs.com/artist/123) |");
@@ -49,6 +51,27 @@ describe("buildMarkdown", () => {
 
 		expect(markdown).not.toContain("```json");
 		expect(markdown).toContain("Made in Ireland.");
+	});
+
+	it("renders the artist profile as Markdown", () => {
+		const markdown = buildMarkdown(releasePayload, "release", RELEASE_URL, "2026-09-07T00:00:00.000Z", {
+			name: "Matt Molloy",
+			profile: 'An Irish musician. See <a href="https://www.discogs.com/artist/123">John Example</a> and <i>traditional music</i>.'
+		});
+
+		expect(markdown).toContain("## artist");
+		expect(markdown).toContain("An Irish musician. See [John Example](https://www.discogs.com/artist/123) and *traditional music*.");
+	});
+
+	it("converts Discogs BBCode in artist profiles", () => {
+		const markdown = buildMarkdown(releasePayload, "release", RELEASE_URL, "2026-09-07T00:00:00.000Z", {
+			profile: 'Director of [a=The San Francisco Conservatory New Music Ensemble], with [i]Shaker Loops[/i], at the [l=San Francisco Conservatory of Music].'
+		});
+
+		expect(markdown).toContain("Director of The San Francisco Conservatory New Music Ensemble, with *Shaker Loops*, at the San Francisco Conservatory of Music.");
+		expect(markdown).not.toContain("[a=");
+		expect(markdown).not.toContain("[i]");
+		expect(markdown).not.toContain("[l=");
 	});
 
 	it("keeps identical artist and album names for an eponymous release", () => {

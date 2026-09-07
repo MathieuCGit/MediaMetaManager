@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchDiscogsResource, getDiscogsAlbumTitle, getDiscogsArtist, getDiscogsNoteName, parseDiscogsUrl } from "../src/discogs";
+import { fetchDiscogsArtistProfile, fetchDiscogsResource, getDiscogsAlbumTitle, getDiscogsArtist, getDiscogsNoteName, parseDiscogsUrl } from "../src/discogs";
 
 const RELEASE_URL = "https://www.discogs.com/release/3940534-Matt-Molloy-Matt-Molloy";
 const FRENCH_RELEASE_URL = "https://www.discogs.com/fr/release/9580817-Postcards-From-Mars-Growth";
@@ -40,6 +40,21 @@ describe("fetchDiscogsResource", () => {
 		expect(requests[0].url).toBe("https://api.discogs.com/releases/3940534?token=test-token");
 		expect(requests[0].headers["User-Agent"]).toContain("MediaMetaManager");
 		expect(result.entity.title).toBe("Matt Molloy - Matt Molloy");
+	});
+
+	it("fetches the primary artist profile referenced by a release", async () => {
+		const requests: string[] = [];
+		const profile = await fetchDiscogsArtistProfile({
+			artists: [{ name: "John Adams", resource_url: "https://api.discogs.com/artists/144310" }]
+		}, {
+			httpRequest: async (request) => {
+				requests.push(request.url);
+				return { json: { id: 144310, name: "John Adams", profile: "A composer." } };
+			}
+		});
+
+		expect(requests[0]).toBe("https://api.discogs.com/artists/144310");
+		expect(profile?.profile).toBe("A composer.");
 	});
 });
 

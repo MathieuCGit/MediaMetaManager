@@ -1,5 +1,5 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting } from "obsidian";
-import { fetchDiscogsResource, getDiscogsNoteName } from "./src/discogs";
+import { DiscogsEntity, fetchDiscogsArtistProfile, fetchDiscogsResource, getDiscogsNoteName } from "./src/discogs";
 import { buildMarkdown } from "./src/markdown";
 import { writeMarkdownNote } from "./src/vault";
 
@@ -49,7 +49,13 @@ export default class MediaMetaManagerPlugin extends Plugin {
 				token: this.settings.discogsToken,
 				httpRequest: requestUrl
 			});
-			const markdown = buildMarkdown(entity, resource.type, input);
+			const artistProfile: DiscogsEntity | undefined = resource.type === "artist"
+				? entity
+				: await fetchDiscogsArtistProfile(entity, {
+					token: this.settings.discogsToken,
+					httpRequest: requestUrl
+				});
+			const markdown = buildMarkdown(entity, resource.type, input, new Date().toISOString(), artistProfile);
 			const path = await writeMarkdownNote(
 				this.app,
 				this.settings.outputFolder,

@@ -52,6 +52,21 @@ function parseDiscogsUrl(input) {
 }
 async function fetchDiscogsResource(input, options) {
   const resource = parseDiscogsUrl(input);
+  return fetchDiscogsApiResource(resource, options);
+}
+async function fetchDiscogsArtistProfile(entity, options) {
+  const resource = getDiscogsArtistResource(entity);
+  return resource ? (await fetchDiscogsApiResource(resource, options)).entity : void 0;
+}
+function getDiscogsArtistResource(entity) {
+  const artists = Array.isArray(entity.artists) ? entity.artists.filter(isRecord) : [];
+  const artist = artists[0];
+  if (!artist) return void 0;
+  const resourceUrl = asText(artist.resource_url);
+  const id = resourceUrl.match(/\/artists\/(\d+)(?:[/?#]|$)/i)?.[1] || asText(artist.id);
+  return id ? { type: "artist", id } : void 0;
+}
+async function fetchDiscogsApiResource(resource, options) {
   const token = options.token?.trim();
   const query = token ? `?token=${encodeURIComponent(token)}` : "";
   const response = await options.httpRequest({
@@ -93,15 +108,18 @@ function isRecord(value) {
 }
 
 // src/markdown.ts
-function buildMarkdown(entity, type, sourceUrl, _importedAt = (/* @__PURE__ */ new Date()).toISOString()) {
+function buildMarkdown(entity, type, sourceUrl, _importedAt = (/* @__PURE__ */ new Date()).toISOString(), artistProfile) {
   const noteName = getDiscogsNoteName(entity, type);
   const albumTitle = getDiscogsAlbumTitle(entity, type);
   const artistName = getDiscogsArtist(entity);
+  const artist = firstRecord(entity.artists);
+  const artistUrl = artist ? publicDiscogsUrl(asText(artist.resource_url) || asText(artist.uri)) : "";
   const lines = [
     "---",
     "type: album",
     `title: ${yamlScalar(albumTitle)}`,
     `artist: ${yamlScalar(artistName || "Unknown")}`,
+    `artist_url: ${artistUrl}`,
     `released: ${yamlScalar(asText(entity.year) || asText(entity.released) || "")}`,
     `genre: ${yamlScalar(joinValues(entity.genres))}`,
     `style: ${yamlScalar(joinValues(entity.styles))}`,
@@ -124,6 +142,9 @@ function buildMarkdown(entity, type, sourceUrl, _importedAt = (/* @__PURE__ */ n
     "",
     "## Credits",
     formatCredits(entity.extraartists),
+    "",
+    "## artist",
+    formatArtistProfile(artistProfile),
     "",
     "## Notes",
     formatNotes(entity.notes)
@@ -202,6 +223,19 @@ function formatCredits(value) {
 function formatNotes(value) {
   if (!value) return "_No notes supplied by Discogs._";
   return String(value).replace(/\\r?\\n/g, "\n\n").replace(/\n{3,}/g, "\n\n");
+}
+function formatArtistProfile(entity) {
+  const profile = entity ? asText(entity.profile).trim() : "";
+  if (!profile) return "_No artist profile supplied by Discogs._";
+  return decodeHtmlEntities(profile).replace(/\[(?:a|l)=([^\]]+)\]/gi, "$1").replace(/\[(i|em)\]([\s\S]*?)\[\/\1\]/gi, "*$2*").replace(/\[(b|strong)\]([\s\S]*?)\[\/\1\]/gi, "**$2**").replace(/<!--\s*[\s\S]*?-->/g, "").replace(/<br\s*\/?>/gi, "\n").replace(/<p\b[^>]*>/gi, "").replace(/<\/p>/gi, "\n\n").replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_match, url, text) => {
+    return markdownLinkOrText(stripHtml(text).trim(), url);
+  }).replace(/<(i|em)\b[^>]*>([\s\S]*?)<\/\1>/gi, "*$2*").replace(/<(b|strong)\b[^>]*>([\s\S]*?)<\/\1>/gi, "**$2**").replace(/<[^>]+>/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+function stripHtml(value) {
+  return value.replace(/<[^>]+>/g, "");
+}
+function decodeHtmlEntities(value) {
+  return value.replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&nbsp;/gi, " ");
 }
 function linkedDiscogsName(value) {
   const name = asText(value.name) || asText(value.title) || formatValue(value);
@@ -308,7 +342,11 @@ var MediaMetaManagerPlugin = class extends import_obsidian2.Plugin {
         token: this.settings.discogsToken,
         httpRequest: import_obsidian2.requestUrl
       });
-      const markdown = buildMarkdown(entity, resource.type, input);
+      const artistProfile = resource.type === "artist" ? entity : await fetchDiscogsArtistProfile(entity, {
+        token: this.settings.discogsToken,
+        httpRequest: import_obsidian2.requestUrl
+      });
+      const markdown = buildMarkdown(entity, resource.type, input, (/* @__PURE__ */ new Date()).toISOString(), artistProfile);
       const path = await writeMarkdownNote(
         this.app,
         this.settings.outputFolder,

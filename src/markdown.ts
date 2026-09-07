@@ -18,18 +18,22 @@ export function buildMarkdown(
 	entity: DiscogsEntity,
 	type: DiscogsResourceType,
 	sourceUrl: string,
-	_importedAt = new Date().toISOString()
+	_importedAt = new Date().toISOString(),
+	artistProfile?: DiscogsEntity
 ): string {
 	// Keep note assembly in one place so every imported resource has the same
 	// section order and can be compared reliably in tests or in version control.
 	const noteName = getDiscogsNoteName(entity, type);
 	const albumTitle = getDiscogsAlbumTitle(entity, type);
 	const artistName = getDiscogsArtist(entity);
+	const artist = firstRecord(entity.artists);
+	const artistUrl = artist ? publicDiscogsUrl(asText(artist.resource_url) || asText(artist.uri)) : "";
 	const lines = [
 		"---",
 		"type: album",
 		`title: ${yamlScalar(albumTitle)}`,
 		`artist: ${yamlScalar(artistName || "Unknown")}`,
+		`artist_url: ${artistUrl}`,
 		`released: ${yamlScalar(asText(entity.year) || asText(entity.released) || "")}`,
 		`genre: ${yamlScalar(joinValues(entity.genres))}`,
 		`style: ${yamlScalar(joinValues(entity.styles))}`,
@@ -52,6 +56,9 @@ export function buildMarkdown(
 		"",
 		"## Credits",
 		formatCredits(entity.extraartists),
+		"",
+		"## artist",
+		formatArtistProfile(artistProfile),
 		"",
 		"## Notes",
 		formatNotes(entity.notes)
@@ -179,6 +186,43 @@ function formatNotes(value: unknown): string {
 	// paragraph boundaries while avoiding excessive vertical whitespace.
 	if (!value) return "_No notes supplied by Discogs._";
 	return String(value).replace(/\\r?\\n/g, "\n\n").replace(/\n{3,}/g, "\n\n");
+}
+
+function formatArtistProfile(entity: DiscogsEntity | undefined): string {
+	const profile = entity ? asText(entity.profile).trim() : "";
+	if (!profile) return "_No artist profile supplied by Discogs._";
+
+	return decodeHtmlEntities(profile)
+		.replace(/\[(?:a|l)=([^\]]+)\]/gi, "$1")
+		.replace(/\[(i|em)\]([\s\S]*?)\[\/\1\]/gi, "*$2*")
+		.replace(/\[(b|strong)\]([\s\S]*?)\[\/\1\]/gi, "**$2**")
+		.replace(/<!--\s*[\s\S]*?-->/g, "")
+		.replace(/<br\s*\/?>/gi, "\n")
+		.replace(/<p\b[^>]*>/gi, "")
+		.replace(/<\/p>/gi, "\n\n")
+		.replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_match, url: string, text: string) => {
+			return markdownLinkOrText(stripHtml(text).trim(), url);
+		})
+		.replace(/<(i|em)\b[^>]*>([\s\S]*?)<\/\1>/gi, "*$2*")
+		.replace(/<(b|strong)\b[^>]*>([\s\S]*?)<\/\1>/gi, "**$2**")
+		.replace(/<[^>]+>/g, "")
+		.replace(/[ \t]+\n/g, "\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+}
+
+function stripHtml(value: string): string {
+	return value.replace(/<[^>]+>/g, "");
+}
+
+function decodeHtmlEntities(value: string): string {
+	return value
+		.replace(/&amp;/gi, "&")
+		.replace(/&lt;/gi, "<")
+		.replace(/&gt;/gi, ">")
+		.replace(/&quot;/gi, '"')
+		.replace(/&#39;|&apos;/gi, "'")
+		.replace(/&nbsp;/gi, " ");
 }
 
 function linkedDiscogsName(value: DiscogsEntity): string {

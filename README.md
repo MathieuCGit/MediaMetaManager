@@ -9,6 +9,8 @@ An Obsidian plugin that imports Discogs metadata for an artist, album, master, o
 - Fetches metadata through the Discogs API.
 - Creates notes using an album-oriented Markdown template.
 - Includes cover artwork, frontmatter, general information, track lists, companies, credits, and notes.
+- Stores the primary artist profile as `artist_url` and links the artist name to that Discogs profile.
+- Fetches the primary artist profile and renders it in a `## artist` section, including Discogs links and basic emphasis.
 - Creates Markdown links to Discogs artists, labels, genres, styles, and countries when URLs are available.
 - Stores the release information in readable sections instead of a raw JSON block.
 - Creates missing output folders automatically.

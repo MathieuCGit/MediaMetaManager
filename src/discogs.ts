@@ -83,6 +83,32 @@ export async function fetchDiscogsResource(
 	options: DiscogsClientOptions
 ): Promise<{ resource: DiscogsResource; entity: DiscogsEntity }> {
 	const resource = parseDiscogsUrl(input);
+	return fetchDiscogsApiResource(resource, options);
+}
+
+/** Fetches the primary artist profile referenced by a release or master. */
+export async function fetchDiscogsArtistProfile(
+	entity: DiscogsEntity,
+	options: DiscogsClientOptions
+): Promise<DiscogsEntity | undefined> {
+	const resource = getDiscogsArtistResource(entity);
+	return resource ? (await fetchDiscogsApiResource(resource, options)).entity : undefined;
+}
+
+export function getDiscogsArtistResource(entity: DiscogsEntity): DiscogsResource | undefined {
+	const artists = Array.isArray(entity.artists) ? entity.artists.filter(isRecord) : [];
+	const artist = artists[0];
+	if (!artist) return undefined;
+
+	const resourceUrl = asText(artist.resource_url);
+	const id = resourceUrl.match(/\/artists\/(\d+)(?:[/?#]|$)/i)?.[1] || asText(artist.id);
+	return id ? { type: "artist", id } : undefined;
+}
+
+async function fetchDiscogsApiResource(
+	resource: DiscogsResource,
+	options: DiscogsClientOptions
+): Promise<{ resource: DiscogsResource; entity: DiscogsEntity }> {
 	const token = options.token?.trim();
 	const query = token ? `?token=${encodeURIComponent(token)}` : "";
 	const response = await options.httpRequest({
