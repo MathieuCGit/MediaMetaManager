@@ -1,0 +1,10 @@
+{
+  "id": "media-meta-manager",
+  "name": "Media Meta Manager",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Importe les metadonnees Discogs d'un artiste ou d'un album dans une note Markdown.",
+  "author": "Mathieu CONAN",
+  "isDesktopOnly": false,
+  "css": "styles.css"
+}

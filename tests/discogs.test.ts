@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+import { fetchDiscogsResource, getDiscogsAlbumTitle, getDiscogsArtist, getDiscogsNoteName, parseDiscogsUrl } from "../src/discogs";
+
+const RELEASE_URL = "https://www.discogs.com/release/3940534-Matt-Molloy-Matt-Molloy";
+
+describe("parseDiscogsUrl", () => {
+	it("extracts the release ID from the supplied Matt Molloy URL", () => {
+		expect(parseDiscogsUrl(RELEASE_URL)).toEqual({ type: "release", id: "3940534" });
+	});
+
+	it.each([
+		"https://example.com/release/3940534",
+		"https://www.discogs.com/search/?q=Matt+Molloy",
+		"not-a-url"
+	])("rejects unsupported URL: %s", (url) => {
+		expect(() => parseDiscogsUrl(url)).toThrow();
+	});
+});
+
+describe("fetchDiscogsResource", () => {
+	it("builds the API request and keeps the injected HTTP layer testable", async () => {
+		const requests: Array<{ url: string; headers: Record<string, string> }> = [];
+		const result = await fetchDiscogsResource(RELEASE_URL, {
+			token: "test-token",
+			httpRequest: async (request) => {
+				requests.push(request);
+				return { json: { id: 3940534, title: "Matt Molloy - Matt Molloy" } };
+			}
+		});
+
+		expect(requests[0].url).toBe("https://api.discogs.com/releases/3940534?token=test-token");
+		expect(requests[0].headers["User-Agent"]).toContain("MediaMetaManager");
+		expect(result.entity.title).toBe("Matt Molloy - Matt Molloy");
+	});
+});
+
+describe("getDiscogsNoteName", () => {
+	const paladinRelease = {
+			title: "Paladin - Charge",
+			artists: [{ name: "Paladin" }]
+		};
+
+	it("uses artist-album for the filename", () => {
+		expect(getDiscogsNoteName(paladinRelease, "release")).toBe("Paladin - Charge");
+	});
+
+	it("extracts the separate artist and album property values", () => {
+		expect(getDiscogsArtist(paladinRelease)).toBe("Paladin");
+		expect(getDiscogsAlbumTitle(paladinRelease, "release")).toBe("Charge");
+	});
+
+	it("combines the artist and album when Discogs returns only the album title", () => {
+		expect(getDiscogsNoteName({
+			title: "Charge",
+			artists: [{ name: "Paladin" }]
+		}, "release")).toBe("Paladin - Charge");
+	});
+});

@@ -1,0 +1,16 @@
+/*
+ * The URL field gets a comfortable reading width on desktop while remaining
+ * fluid on narrow mobile screens. The max-width prevents the modal from
+ * becoming wider than its own content area.
+ */
+.media-meta-manager-url-input {
+	width: min(36rem, 90vw);
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+	.media-meta-manager-url-input {
+		width: 100%;
+	}
+}
