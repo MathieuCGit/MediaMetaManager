@@ -1,6 +1,6 @@
 # Media Meta Manager
 
-An Obsidian plugin that imports Discogs metadata for an artist, album, master, or release into a Markdown note.
+An Obsidian plugin that imports Discogs metadata for an artist, album, master, or release and, overall, OTHER informations (credits, label, companies, musicians, technicians, engineer,etc.)
 
 ## Features
 
