@@ -71,9 +71,9 @@ function getDiscogsTitle(entity, type) {
 function getDiscogsNoteName(entity, type) {
   const title = getDiscogsTitle(entity, type).trim();
   const artist = getDiscogsArtist(entity);
-  if (!artist || title.startsWith(`${artist} - `)) return title;
-  if (title === artist) return title;
-  return `${artist} - ${title}`;
+  const albumTitle = getDiscogsAlbumTitle(entity, type);
+  if (!artist) return title;
+  return `${albumTitle} - ${artist}`;
 }
 function getDiscogsArtist(entity) {
   const artists = Array.isArray(entity.artists) ? entity.artists.filter(isRecord) : [];
@@ -113,7 +113,7 @@ function buildMarkdown(entity, type, sourceUrl, _importedAt = (/* @__PURE__ */ n
     "",
     formatCover(entity),
     "",
-    "## Informations G\xE9n\xE9rales",
+    "## General information",
     formatGeneralInformation(entity, sourceUrl),
     "",
     "## Track list",

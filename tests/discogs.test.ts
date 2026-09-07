@@ -3,6 +3,10 @@ import { fetchDiscogsResource, getDiscogsAlbumTitle, getDiscogsArtist, getDiscog
 
 const RELEASE_URL = "https://www.discogs.com/release/3940534-Matt-Molloy-Matt-Molloy";
 const FRENCH_RELEASE_URL = "https://www.discogs.com/fr/release/9580817-Postcards-From-Mars-Growth";
+const KORNOG_RELEASE = {
+	title: "Kornog - Kornog",
+	artists: [{ name: "Kornog" }]
+};
 
 describe("parseDiscogsUrl", () => {
 	it("extracts the release ID from the supplied Matt Molloy URL", () => {
@@ -46,7 +50,7 @@ describe("getDiscogsNoteName", () => {
 		};
 
 	it("uses artist-album for the filename", () => {
-		expect(getDiscogsNoteName(paladinRelease, "release")).toBe("Paladin - Charge");
+		expect(getDiscogsNoteName(paladinRelease, "release")).toBe("Charge - Paladin");
 	});
 
 	it("extracts the separate artist and album property values", () => {
@@ -58,6 +62,19 @@ describe("getDiscogsNoteName", () => {
 		expect(getDiscogsNoteName({
 			title: "Charge",
 			artists: [{ name: "Paladin" }]
-		}, "release")).toBe("Paladin - Charge");
+		}, "release")).toBe("Charge - Paladin");
+	});
+
+	it("keeps an eponymous first album for both artist and album", () => {
+		expect(getDiscogsArtist(KORNOG_RELEASE)).toBe("Kornog");
+		expect(getDiscogsAlbumTitle(KORNOG_RELEASE, "release")).toBe("Kornog");
+		expect(getDiscogsNoteName(KORNOG_RELEASE, "release")).toBe("Kornog - Kornog");
+	});
+
+	it("adds the artist to the filename when Discogs returns an identical title", () => {
+		const release = { title: "Kornog", artists: [{ name: "Kornog" }] };
+
+		expect(getDiscogsAlbumTitle(release, "release")).toBe("Kornog");
+		expect(getDiscogsNoteName(release, "release")).toBe("Kornog - Kornog");
 	});
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildMarkdown } from "../src/markdown";
 
 const RELEASE_URL = "https://www.discogs.com/release/3940534-Matt-Molloy-Matt-Molloy";
+const KORNOG_RELEASE_URL = "https://www.discogs.com/fr/release/4445178-Kornog-Kornog";
 
 const releasePayload = {
 	id: 3940534,
@@ -44,5 +45,16 @@ describe("buildMarkdown", () => {
 
 		expect(markdown).not.toContain("```json");
 		expect(markdown).toContain("Made in Ireland.");
+	});
+
+	it("keeps identical artist and album names for an eponymous release", () => {
+		const markdown = buildMarkdown({
+			title: "Kornog - Kornog",
+			artists: [{ name: "Kornog" }]
+		}, "release", KORNOG_RELEASE_URL);
+
+		expect(markdown).toContain("title: Kornog");
+		expect(markdown).toContain("artist: Kornog");
+		expect(markdown).toContain("# Kornog - Kornog");
 	});
 });
