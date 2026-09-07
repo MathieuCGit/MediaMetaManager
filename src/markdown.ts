@@ -20,6 +20,8 @@ export function buildMarkdown(
 	sourceUrl: string,
 	_importedAt = new Date().toISOString()
 ): string {
+	// Keep note assembly in one place so every imported resource has the same
+	// section order and can be compared reliably in tests or in version control.
 	const noteName = getDiscogsNoteName(entity, type);
 	const albumTitle = getDiscogsAlbumTitle(entity, type);
 	const artistName = getDiscogsArtist(entity);
@@ -55,10 +57,14 @@ export function buildMarkdown(
 		formatNotes(entity.notes)
 	];
 
+	// Collapse accidental blank-line runs introduced by optional sections, then
+	// always finish with one newline so the generated file is POSIX-friendly.
 	return lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
 }
 
 function formatCover(entity: DiscogsEntity): string {
+	// Discogs normally provides an `images` array, but `thumb` is a useful
+	// fallback for artist/master responses and older API payloads.
 	const images = Array.isArray(entity.images) ? entity.images : [];
 	const primary = images.find(isRecord);
 	const imageUrl = primary ? asText(primary.uri) || asText(primary.resource_url) : asText(entity.thumb);
@@ -100,12 +106,14 @@ function formatGeneralInformation(entity: DiscogsEntity, sourceUrl: string): str
  * table parsing for all Discogs releases.
  */
 function formatTrackTable(value: unknown): string {
+	// Treat the API value as unknown because Discogs may omit tracklist or
+	// include non-track rows. A fixed header keeps the Markdown table valid.
 	const tracks = Array.isArray(value) ? value : [];
 	const rows = tracks.map((item) => {
 		if (!isRecord(item)) return `|  |  | ${escapeTable(String(item))} |`;
 		const position = escapeTable(asText(item.position));
 		const duration = escapeTable(asText(item.duration));
-		const title = escapeTable(asText(item.title) || "Untitled track");
+		const title = formatTrackTitle(item);
 		return `| ${position} | ${duration} | ${title} |`;
 	});
 	return [
@@ -115,12 +123,34 @@ function formatTrackTable(value: unknown): string {
 	].join("\n");
 }
 
+/** Keeps track-specific musician roles next to the track they describe. */
+function formatTrackTitle(track: DiscogsEntity): string {
+	// Track-level credits are intentionally rendered beside the title. This
+	// mirrors Discogs and avoids losing instrument roles that are not repeated
+	// in the release-wide `extraartists` list.
+	const title = escapeTable(asText(track.title) || "Untitled track");
+	const credits = Array.isArray(track.extraartists)
+		? track.extraartists.map(formatTrackCredit).filter(Boolean)
+		: [];
+	return credits.length ? `${title}<br>${credits.join("<br>")}` : title;
+}
+
+function formatTrackCredit(value: unknown): string {
+	// A credit can be malformed or incomplete, so preserve a readable fallback
+	// instead of dropping the entire track row.
+	if (!isRecord(value)) return escapeTable(formatValue(value));
+	const role = escapeTable(asText(value.role) || "Credit");
+	return `${role} – ${linkedDiscogsName(value)}`;
+}
+
 /**
  * Companies use Discogs' `entity_type_name` as the left-hand role, for example
  * "Printed By" or "Record Company". Duplicate roles remain visible because
  * they can refer to different companies on a physical release.
  */
 function formatCompanies(value: unknown): string {
+	// Keep duplicate company roles: two companies may legitimately share the
+	// same role on a physical release, such as separate manufacturing entries.
 	if (!Array.isArray(value) || value.length === 0) return "_No companies supplied by Discogs._";
 	return value.map((item) => {
 		if (!isRecord(item)) return `- ${formatValue(item)}`;
@@ -134,6 +164,8 @@ function formatCompanies(value: unknown): string {
  * artist pages whenever Discogs provides a resource URL.
  */
 function formatCredits(value: unknown): string {
+	// These are release-wide credits. Track-specific credits are handled by
+	// `formatTrackTitle` so the two Discogs scopes remain distinguishable.
 	if (!Array.isArray(value) || value.length === 0) return "_No credits supplied by Discogs._";
 	return value.map((item) => {
 		if (!isRecord(item)) return `- ${formatValue(item)}`;
@@ -143,11 +175,15 @@ function formatCredits(value: unknown): string {
 }
 
 function formatNotes(value: unknown): string {
+	// Discogs notes can contain escaped line breaks in API responses. Preserve
+	// paragraph boundaries while avoiding excessive vertical whitespace.
 	if (!value) return "_No notes supplied by Discogs._";
 	return String(value).replace(/\\r?\\n/g, "\n\n").replace(/\n{3,}/g, "\n\n");
 }
 
 function linkedDiscogsName(value: DiscogsEntity): string {
+	// Prefer the artist/company name, but retain a serialized value when the
+	// API returns an unexpected object without a display name.
 	const name = asText(value.name) || asText(value.title) || formatValue(value);
 	const url = publicDiscogsUrl(asText(value.resource_url) || asText(value.uri));
 	return markdownLinkOrText(name, url);
@@ -159,6 +195,8 @@ function markdownLinkOrText(text: string, url: string): string {
 }
 
 function publicDiscogsUrl(url: string): string {
+	// API resource URLs are not pleasant note links. Convert only known Discogs
+	// API collection paths and leave unrelated URLs untouched.
 	if (!url) return "";
 	return url
 		.replace(/^https?:\/\/api\.discogs\.com/i, "https://www.discogs.com")
@@ -171,6 +209,8 @@ function publicDiscogsUrl(url: string): string {
 }
 
 function formatLabels(value: unknown): string {
+	// Labels carry both a display name and a catalogue number; keeping both is
+	// important when several editions share the same album title.
 	const label = firstRecord(value);
 	if (!label) return joinValues(value);
 	const name = asText(label.name);
@@ -179,6 +219,8 @@ function formatLabels(value: unknown): string {
 }
 
 function firstRecord(value: unknown): DiscogsEntity | undefined {
+	// Array fields are common in the Discogs schema, but this helper also makes
+	// missing or malformed fields harmless to the renderer.
 	return Array.isArray(value) ? value.find(isRecord) : undefined;
 }
 
@@ -191,15 +233,22 @@ function joinValues(value: unknown): string {
 }
 
 function formatValue(value: unknown): string {
+	// This conservative serializer is used only for malformed or unexpected
+	// values, where retaining information is preferable to throwing during an
+	// import.
 	if (Array.isArray(value)) return value.map(formatValue).join(", ");
 	if (isRecord(value)) return Object.keys(value).map((key) => `${key}: ${formatValue(value[key])}`).join("; ");
 	return String(value ?? "");
 }
 
 function escapeTable(value: string): string {
+	// Pipes terminate Markdown cells, and newlines would split a track across
+	// multiple rows. Replace both before inserting values into the table.
 	return value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
 
 function yamlScalar(value: string): string {
+	// Frontmatter values are deliberately kept on one line because this note
+	// format does not emit quoted or block YAML scalars.
 	return value ? value.replace(/\r?\n/g, " ") : "";
 }

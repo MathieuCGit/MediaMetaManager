@@ -4,6 +4,8 @@ import { buildMarkdown } from "../src/markdown";
 const RELEASE_URL = "https://www.discogs.com/release/3940534-Matt-Molloy-Matt-Molloy";
 const KORNOG_RELEASE_URL = "https://www.discogs.com/fr/release/4445178-Kornog-Kornog";
 
+// This fixture includes both Discogs credit scopes: a track-specific engineer
+// and release-wide musician/technical credits.
 const releasePayload = {
 	id: 3940534,
 	title: "Matt Molloy - Matt Molloy",
@@ -13,7 +15,7 @@ const releasePayload = {
 	styles: ["Celtic"],
 	images: [{ uri: "https://i.discogs.com/cover.jpg" }],
 	artists: [{ name: "Matt Molloy", resource_url: "https://api.discogs.com/artists/507127" }],
-	tracklist: [{ position: "A1", title: "Boys Of The Lough/Tarbolton", duration: "", extraartists: [{ name: "John Engineer", role: "Engineer" }] }],
+	tracklist: [{ position: "A1", title: "Boys Of The Lough/Tarbolton", duration: "", extraartists: [{ name: "John Engineer", role: "Engineer", resource_url: "https://api.discogs.com/artists/123" }] }],
 	extraartists: [
 		{ name: "Matt Molloy", role: "Flute", resource_url: "https://api.discogs.com/artists/507127" },
 		{ name: "John Engineer", role: "Recorded By, Mixed By", resource_url: "https://api.discogs.com/artists/123" }
@@ -25,6 +27,8 @@ const releasePayload = {
 
 describe("buildMarkdown", () => {
 	it("renders release metadata and musician/technical credits", () => {
+		// Track credits must stay attached to their track, while release credits
+		// remain in the dedicated Credits section.
 		const markdown = buildMarkdown(releasePayload, "release", RELEASE_URL, "2026-09-07T00:00:00.000Z");
 
 		expect(markdown).toContain("type: album");
@@ -32,7 +36,7 @@ describe("buildMarkdown", () => {
 		expect(markdown).toContain("artist: Matt Molloy");
 		expect(markdown).toContain("![Pochette](https://i.discogs.com/cover.jpg)");
 		expect(markdown).toContain("# Matt Molloy - Matt Molloy");
-		expect(markdown).toContain("| A1 |  | Boys Of The Lough/Tarbolton |");
+		expect(markdown).toContain("| A1 |  | Boys Of The Lough/Tarbolton<br>Engineer – [John Engineer](https://www.discogs.com/artist/123) |");
 		expect(markdown).toContain("- Flute – [Matt Molloy](https://www.discogs.com/artist/507127)");
 		expect(markdown).toContain("- Recorded By, Mixed By – [John Engineer](https://www.discogs.com/artist/123)");
 		expect(markdown).toContain("- Recorded At – Studio Example");

@@ -164,7 +164,7 @@ function formatTrackTable(value) {
     if (!isRecord(item)) return `|  |  | ${escapeTable(String(item))} |`;
     const position = escapeTable(asText(item.position));
     const duration = escapeTable(asText(item.duration));
-    const title = escapeTable(asText(item.title) || "Untitled track");
+    const title = formatTrackTitle(item);
     return `| ${position} | ${duration} | ${title} |`;
   });
   return [
@@ -172,6 +172,16 @@ function formatTrackTable(value) {
     "| --- | --- | --- |",
     ...rows.length ? rows : ["|  |  | _No track supplied by Discogs._ |"]
   ].join("\n");
+}
+function formatTrackTitle(track) {
+  const title = escapeTable(asText(track.title) || "Untitled track");
+  const credits = Array.isArray(track.extraartists) ? track.extraartists.map(formatTrackCredit).filter(Boolean) : [];
+  return credits.length ? `${title}<br>${credits.join("<br>")}` : title;
+}
+function formatTrackCredit(value) {
+  if (!isRecord(value)) return escapeTable(formatValue(value));
+  const role = escapeTable(asText(value.role) || "Credit");
+  return `${role} \u2013 ${linkedDiscogsName(value)}`;
 }
 function formatCompanies(value) {
   if (!Array.isArray(value) || value.length === 0) return "_No companies supplied by Discogs._";
