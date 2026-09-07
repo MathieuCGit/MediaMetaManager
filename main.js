@@ -73,7 +73,7 @@ function getDiscogsNoteName(entity, type) {
   const artist = getDiscogsArtist(entity);
   const albumTitle = getDiscogsAlbumTitle(entity, type);
   if (!artist) return title;
-  return `${albumTitle} - ${artist}`;
+  return `${artist} - ${albumTitle}`;
 }
 function getDiscogsArtist(entity) {
   const artists = Array.isArray(entity.artists) ? entity.artists.filter(isRecord) : [];
@@ -239,13 +239,14 @@ function yamlScalar(value) {
 
 // src/vault.ts
 var import_obsidian = require("obsidian");
-async function writeMarkdownNote(app, folderInput, title, markdown) {
+async function writeMarkdownNote(app, folderInput, title, markdown, confirmOverwrite) {
   const folder = (0, import_obsidian.normalizePath)(folderInput.trim() || "Discogs");
   await ensureFolder(app, folder);
   const fileName = `${sanitizeFileName(title)}.md`;
   const path = (0, import_obsidian.normalizePath)(`${folder}/${fileName}`);
   const existing = app.vault.getAbstractFileByPath(path);
   if (existing instanceof import_obsidian.TFile) {
+    if (!await confirmOverwrite(path)) return null;
     await app.vault.modify(existing, markdown);
   } else {
     await app.vault.create(path, markdown);
@@ -302,13 +303,43 @@ var MediaMetaManagerPlugin = class extends import_obsidian2.Plugin {
         this.app,
         this.settings.outputFolder,
         getDiscogsNoteName(entity, resource.type),
-        markdown
+        markdown,
+        (path2) => this.confirmOverwrite(path2)
       );
+      if (!path) return;
       new import_obsidian2.Notice(`Discogs note imported: ${path}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       new import_obsidian2.Notice(`Discogs import failed: ${message}`);
     }
+  }
+  confirmOverwrite(path) {
+    return new Promise((resolve) => new OverwriteModal(this.app, path, resolve).open());
+  }
+};
+var OverwriteModal = class extends import_obsidian2.Modal {
+  constructor(app, path, resolve) {
+    super(app);
+    this.path = path;
+    this.resolve = resolve;
+    this.settled = false;
+  }
+  onOpen() {
+    this.titleEl.setText("Overwrite existing note?");
+    this.contentEl.createEl("p", { text: `The note ${this.path} already exists.` });
+    new import_obsidian2.Setting(this.contentEl).addButton((button) => button.setButtonText("Cancel").onClick(() => this.finish(false))).addButton((button) => button.setButtonText("Overwrite").setCta().onClick(() => this.finish(true)));
+  }
+  onClose() {
+    this.contentEl.empty();
+    if (this.settled) return;
+    this.settled = true;
+    this.resolve(false);
+  }
+  finish(confirmed) {
+    if (this.settled) return;
+    this.settled = true;
+    this.resolve(confirmed);
+    this.close();
   }
 };
 var DiscogsUrlModal = class extends import_obsidian2.Modal {

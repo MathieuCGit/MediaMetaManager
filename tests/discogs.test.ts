@@ -50,7 +50,7 @@ describe("getDiscogsNoteName", () => {
 		};
 
 	it("uses artist-album for the filename", () => {
-		expect(getDiscogsNoteName(paladinRelease, "release")).toBe("Charge - Paladin");
+		expect(getDiscogsNoteName(paladinRelease, "release")).toBe("Paladin - Charge");
 	});
 
 	it("extracts the separate artist and album property values", () => {
@@ -62,7 +62,7 @@ describe("getDiscogsNoteName", () => {
 		expect(getDiscogsNoteName({
 			title: "Charge",
 			artists: [{ name: "Paladin" }]
-		}, "release")).toBe("Charge - Paladin");
+		}, "release")).toBe("Paladin - Charge");
 	});
 
 	it("keeps an eponymous first album for both artist and album", () => {

@@ -54,14 +54,51 @@ export default class MediaMetaManagerPlugin extends Plugin {
 				this.app,
 				this.settings.outputFolder,
 				getDiscogsNoteName(entity, resource.type),
-				markdown
+				markdown,
+				(path) => this.confirmOverwrite(path)
 			);
+			if (!path) return;
 
 			new Notice(`Discogs note imported: ${path}`);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			new Notice(`Discogs import failed: ${message}`);
 		}
+	}
+
+	private confirmOverwrite(path: string): Promise<boolean> {
+		return new Promise((resolve) => new OverwriteModal(this.app, path, resolve).open());
+	}
+}
+
+class OverwriteModal extends Modal {
+	private settled = false;
+
+	constructor(app: App, private readonly path: string, private readonly resolve: (confirmed: boolean) => void) {
+		super(app);
+	}
+
+	onOpen(): void {
+		this.titleEl.setText("Overwrite existing note?");
+		this.contentEl.createEl("p", { text: `The note ${this.path} already exists.` });
+
+		new Setting(this.contentEl)
+			.addButton((button) => button.setButtonText("Cancel").onClick(() => this.finish(false)))
+			.addButton((button) => button.setButtonText("Overwrite").setCta().onClick(() => this.finish(true)));
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+		if (this.settled) return;
+		this.settled = true;
+		this.resolve(false);
+	}
+
+	private finish(confirmed: boolean): void {
+		if (this.settled) return;
+		this.settled = true;
+		this.resolve(confirmed);
+		this.close();
 	}
 }
 

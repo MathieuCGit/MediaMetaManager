@@ -114,7 +114,7 @@ export function getDiscogsNoteName(entity: DiscogsEntity, type: DiscogsResourceT
 	const albumTitle = getDiscogsAlbumTitle(entity, type);
 
 	if (!artist) return title;
-	return `${albumTitle} - ${artist}`;
+	return `${artist} - ${albumTitle}`;
 }
 
 /** Returns the primary artist name used by the note frontmatter. */

@@ -8,7 +8,15 @@
 
 import { App, normalizePath, TFile } from "obsidian";
 
-export async function writeMarkdownNote(app: App, folderInput: string, title: string, markdown: string): Promise<string> {
+export type ConfirmOverwrite = (path: string) => Promise<boolean>;
+
+export async function writeMarkdownNote(
+	app: App,
+	folderInput: string,
+	title: string,
+	markdown: string,
+	confirmOverwrite: ConfirmOverwrite
+): Promise<string | null> {
 	const folder = normalizePath(folderInput.trim() || "Discogs");
 	await ensureFolder(app, folder);
 
@@ -17,6 +25,7 @@ export async function writeMarkdownNote(app: App, folderInput: string, title: st
 	const existing = app.vault.getAbstractFileByPath(path);
 
 	if (existing instanceof TFile) {
+		if (!await confirmOverwrite(path)) return null;
 		await app.vault.modify(existing, markdown);
 	} else {
 		await app.vault.create(path, markdown);
