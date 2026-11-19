@@ -14,11 +14,12 @@ An Obsidian plugin that imports Discogs metadata for an artist, album, master, o
 - Creates Markdown links to Discogs artists, labels, genres, styles, and countries when URLs are available.
 - Stores the release information in readable sections instead of a raw JSON block.
 - Creates missing output folders automatically.
+- Suggests existing vault folders while typing in the output folder setting.
 - Updates an existing note when the generated filename already exists.
 
 ## Requirements
 
-- Obsidian 1.4.0 or later.
+- Obsidian 1.4.10 or later.
 - Node.js and npm for development builds.
 - A Discogs personal token may be required when anonymous API requests are rate-limited or rejected.
 

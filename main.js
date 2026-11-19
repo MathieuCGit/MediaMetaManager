@@ -436,10 +436,41 @@ var MediaMetaManagerSettingTab = class extends import_obsidian2.PluginSettingTab
       this.plugin.settings.discogsToken = value.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("Output folder").setDesc("Vault folder where imported notes are created.").addText((text) => text.setPlaceholder("Discogs").setValue(this.plugin.settings.outputFolder).onChange(async (value) => {
-      this.plugin.settings.outputFolder = value.trim() || DEFAULT_SETTINGS.outputFolder;
-      await this.plugin.saveSettings();
-    }));
+    new import_obsidian2.Setting(containerEl).setName("Output folder").setDesc("Vault folder where imported notes are created. Type part of a folder name to see suggestions.").addText((text) => {
+      text.setPlaceholder("Discogs").setValue(this.plugin.settings.outputFolder).onChange((value) => {
+        void this.updateOutputFolder(value);
+      });
+      new VaultFolderSuggest(this.app, text.inputEl, (path) => {
+        text.setValue(path);
+        void this.updateOutputFolder(path);
+      });
+    });
+  }
+  async updateOutputFolder(value) {
+    const outputFolder = value.trim() || DEFAULT_SETTINGS.outputFolder;
+    if (outputFolder === this.plugin.settings.outputFolder) return;
+    this.plugin.settings.outputFolder = outputFolder;
+    await this.plugin.saveSettings();
+  }
+};
+var VaultFolderSuggest = class extends import_obsidian2.AbstractInputSuggest {
+  constructor(app, inputEl, onSelectFolder) {
+    super(app, inputEl);
+    this.onSelectFolder = onSelectFolder;
+    this.limit = 20;
+  }
+  getSuggestions(query) {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return [];
+    return this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian2.TFolder).filter((folder) => folder.path.toLowerCase().includes(normalizedQuery));
+  }
+  renderSuggestion(folder, element) {
+    element.setText(folder.path);
+  }
+  selectSuggestion(folder) {
+    this.setValue(folder.path);
+    this.onSelectFolder(folder.path);
+    this.close();
   }
 };
 //# sourceMappingURL=main.js.map

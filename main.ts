@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting } from "obsidian";
+import { AbstractInputSuggest, App, Modal, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFolder } from "obsidian";
 import { DiscogsEntity, fetchDiscogsArtistProfile, fetchDiscogsResource, getDiscogsNoteName } from "./src/discogs";
 import { buildMarkdown } from "./src/markdown";
 import { writeMarkdownNote } from "./src/vault";
@@ -176,13 +176,55 @@ class MediaMetaManagerSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Output folder")
-			.setDesc("Vault folder where imported notes are created.")
-			.addText((text) => text
-				.setPlaceholder("Discogs")
-				.setValue(this.plugin.settings.outputFolder)
-				.onChange(async (value) => {
-					this.plugin.settings.outputFolder = value.trim() || DEFAULT_SETTINGS.outputFolder;
-					await this.plugin.saveSettings();
-				}));
+			.setDesc("Vault folder where imported notes are created. Type part of a folder name to see suggestions.")
+			.addText((text) => {
+				text
+					.setPlaceholder("Discogs")
+					.setValue(this.plugin.settings.outputFolder)
+					.onChange((value) => { void this.updateOutputFolder(value); });
+
+				new VaultFolderSuggest(this.app, text.inputEl, (path) => {
+					text.setValue(path);
+					void this.updateOutputFolder(path);
+				});
+			});
+	}
+
+	private async updateOutputFolder(value: string): Promise<void> {
+		const outputFolder = value.trim() || DEFAULT_SETTINGS.outputFolder;
+		if (outputFolder === this.plugin.settings.outputFolder) return;
+		this.plugin.settings.outputFolder = outputFolder;
+		await this.plugin.saveSettings();
+	}
+}
+
+class VaultFolderSuggest extends AbstractInputSuggest<TFolder> {
+	constructor(
+		app: App,
+		inputEl: HTMLInputElement,
+		private readonly onSelectFolder: (path: string) => void
+	) {
+		super(app, inputEl);
+		this.limit = 20;
+	}
+
+	protected getSuggestions(query: string): TFolder[] {
+		const normalizedQuery = query.trim().toLowerCase();
+		if (!normalizedQuery) return [];
+
+		// Search the full path so typing a nested folder's name finds its destination.
+		return this.app.vault.getAllLoadedFiles()
+			.filter((file): file is TFolder => file instanceof TFolder)
+			.filter((folder) => folder.path.toLowerCase().includes(normalizedQuery));
+	}
+
+	renderSuggestion(folder: TFolder, element: HTMLElement): void {
+		element.setText(folder.path);
+	}
+
+	selectSuggestion(folder: TFolder): void {
+		this.setValue(folder.path);
+		this.onSelectFolder(folder.path);
+		this.close();
 	}
 }
